@@ -1,0 +1,64 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environments
+venv/
+env/
+.venv/
+
+.idea/
+
+# Environment & secrets
+.env
+*.env
+config/local*.yaml
+credentials.json
+.netrc
+
+# Data (ignore everything, optionally keep a small sample)
+data/
+!data/sample/
+# If you want to keep certain small files, use:
+# !data/sample/*.csv
+
+# Preprocessed features
+features/
+*.npy
+*.h5
+*.pkl
+# except if intentionally small demo file
+!demo.pkl
+
+# Model weights & checkpoints
+*.pth
+*.pt
+*.ckpt
+*.h5
+*.hdf5
+*.keras
+*.onnx
+saved_model/
+checkpoints/
+lightning_logs/
+best_model*
+last.ckpt
+
+# Training logs
+logs/
+runs/
+wandb/
+mlruns/
+*.tfevents.*
+outputs/
+results/*.csv
+
+# Misc
+*.log
+*.aux
+*.bbl
+*.blg
