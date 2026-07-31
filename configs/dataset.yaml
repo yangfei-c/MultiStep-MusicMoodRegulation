@@ -1,0 +1,19 @@
+mtg:
+  audio_dir: 'D:/AAAA_audio_dataset/mtg-jamendo/audio'
+  split_dir: 'D:/AAAA_audio_dataset/mtg-jamendo/splits/split-0/TSV'
+  feature_dir: 'D:/AAAA_audio_dataset/mtg-jamendo/MERT_95M_30s'
+  tag_vocabulary_file: 'D:/AAAA_audio_dataset/mtg-jamendo/meta/tag_list.npy'
+
+
+deam:
+  audio_dir: 'D:/AAAA_audio_dataset/deam/mp3'
+  split_dir: 'D:/AAAA_audio_dataset/deam/meta/split'
+  feature_dir: 'D:/AAAA_audio_dataset/deam/mert_30s'
+  static_annotation_file: 'D:/AAAA_audio_dataset/deam/meta/static_annotations.csv'
+
+
+pmemo:
+  audio_dir: 'D:/AAAA_audio_dataset/pmemo/mp3'
+  split_dir: 'D:/AAAA_audio_dataset/pmemo/meta/split'
+  feature_dir: 'D:/AAAA_audio_dataset/pmemo/mert_30s'
+  static_annotation_file: 'D:/AAAA_audio_dataset/pmemo/meta/static_annotations.csv'

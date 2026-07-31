@@ -16,7 +16,7 @@ env/
 # Environment & secrets
 .env
 *.env
-config/local*.yaml
+configs/local*.yaml
 credentials.json
 .netrc
 
