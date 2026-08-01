@@ -7,13 +7,14 @@ data:
   pin_memory: true
 
 feature:
-  # Python 0-based 索引
+  # 保存的 12 层数组中的 Python 0-based 索引
   layer_indices: [5, 6]
-  pooling: mean
+  pooling: mean_std
 
 model:
   hidden_dim: 256
   dropout: 0.2
+  pooling_eps: 1.0e-5
 
 optimizer:
   name: adamw
