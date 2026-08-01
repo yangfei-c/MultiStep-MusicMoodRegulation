@@ -1,0 +1,114 @@
+import sys
+from pathlib import Path
+
+import torch
+import yaml
+
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from src.data import MTGDataset, VADataset, build_dataloader
+
+
+DATASET_CONFIG = ROOT / "configs" / "dataset.yaml"
+TRAIN_CONFIG = ROOT / "configs" / "train.yaml"
+EXPECTED_LENGTHS = {"mtg": 32859, "deam": 1261, "pmemo": 536}
+
+
+def load_yaml(path: Path) -> dict:
+    if not path.is_file():
+        raise FileNotFoundError(f"配置文件不存在：{path}")
+    with path.open("r", encoding="utf-8") as file:
+        config = yaml.safe_load(file)
+    if not isinstance(config, dict):
+        raise ValueError(f"YAML 格式错误：{path}")
+    return config
+
+
+def require(condition: bool, message: str) -> None:
+    if not condition:
+        raise RuntimeError(f"[FAIL] {message}")
+
+
+def check_batch(name: str, dataset, dataloader, target_dim: int) -> None:
+    print(f"\n================ {name.upper()} ================")
+    batch = next(iter(dataloader))
+    features, mask, lengths, targets = batch["features"], batch["segment_mask"], batch["lengths"], batch["targets"]
+
+    require(len(dataset) == EXPECTED_LENGTHS[name], f"数据集长度为 {len(dataset)}，预期为 {EXPECTED_LENGTHS[name]}")
+    require(features.ndim == 4 and tuple(features.shape[2:]) == (12, 768), f"features 形状错误：{tuple(features.shape)}")
+    require(mask.shape == features.shape[:2], f"segment_mask 形状错误：{tuple(mask.shape)}")
+    require(targets.ndim == 2 and targets.shape[1] == target_dim, f"targets 形状错误：{tuple(targets.shape)}")
+    require(lengths.shape[0] == features.shape[0], f"lengths 形状错误：{tuple(lengths.shape)}")
+
+    require(features.dtype == torch.float32, f"features dtype 错误：{features.dtype}")
+    require(targets.dtype == torch.float32, f"targets dtype 错误：{targets.dtype}")
+    require(mask.dtype == torch.bool, f"segment_mask dtype 错误：{mask.dtype}")
+    require(lengths.dtype == torch.long, f"lengths dtype 错误：{lengths.dtype}")
+
+    require(torch.isfinite(features).all().item(), "features 包含 NaN 或 Inf")
+    require(torch.isfinite(targets).all().item(), "targets 包含 NaN 或 Inf")
+    require((lengths > 0).all().item(), "存在没有有效分段的歌曲")
+    require(torch.equal(mask.sum(dim=1), lengths), "segment_mask 与 lengths 不一致")
+
+    if (~mask).any().item():
+        require(torch.count_nonzero(features[~mask]).item() == 0, "padding 位置存在非零特征")
+
+    if name == "mtg":
+        require(((targets == 0) | (targets == 1)).all().item(), "MTG target 不是二值标签")
+        require((targets.sum(dim=1) >= 1).all().item(), "MTG 中存在没有正标签的样本")
+    else:
+        require(targets.min().item() >= -1.0 - 1e-6 and targets.max().item() <= 1.0 + 1e-6, f"VA 超出 [-1,1]：{targets.min().item()}～{targets.max().item()}")
+
+    print(f"dataset length：{len(dataset)}")
+    print(f"sample ids：{batch['ids']}")
+    print(f"features：{tuple(features.shape)}")
+    print(f"segment_mask：{tuple(mask.shape)}")
+    print(f"targets：{tuple(targets.shape)}")
+    print(f"valid segments：{lengths.tolist()}")
+    print(f"target range：{targets.min().item():.4f} ～ {targets.max().item():.4f}")
+    print(f"dtype：features={features.dtype}，targets={targets.dtype}，mask={mask.dtype}")
+    print(f"[PASS] {name.upper()} DataLoader")
+
+
+def main() -> None:
+    dataset_config, train_config = load_yaml(DATASET_CONFIG), load_yaml(TRAIN_CONFIG)
+    data_config = train_config["data"]
+
+    datasets = {
+        "mtg": MTGDataset(dataset_config["mtg"], "train"),
+        "deam": VADataset(dataset_config["deam"], "deam", "train"),
+        "pmemo": VADataset(dataset_config["pmemo"], "pmemo", "train"),
+    }
+
+    loaders = {
+        name: build_dataloader(
+            dataset,
+            batch_size=int(data_config["batch_size"]),
+            shuffle=False,
+            num_workers=int(data_config["num_workers"]),
+            pin_memory=bool(data_config["pin_memory"]),
+        )
+        for name, dataset in datasets.items()
+    }
+
+    print(f"项目根目录：{ROOT}")
+    print(f"数据配置：{DATASET_CONFIG}")
+    print(f"训练配置：{TRAIN_CONFIG}")
+    print(f"batch_size：{data_config['batch_size']}")
+    print(f"num_workers：{data_config['num_workers']}")
+    print(f"pin_memory：{data_config['pin_memory']}")
+    print("检查模式：只读取每个数据集的一个 batch，不训练模型")
+
+    check_batch("mtg", datasets["mtg"], loaders["mtg"], 183)
+    check_batch("deam", datasets["deam"], loaders["deam"], 2)
+    check_batch("pmemo", datasets["pmemo"], loaders["pmemo"], 2)
+
+    print("\n================ 最终结果 ================")
+    print("[PASS] 三个 Dataset 和 DataLoader 检查全部通过")
+
+
+if __name__ == "__main__":
+    main()
