@@ -7,7 +7,7 @@ data:
   pin_memory: true
 
 feature:
-  # 保存的 12 层数组中的 Python 0-based 索引
+  # Python 0-based 索引
   layer_indices: [5, 6]
   pooling: mean_std
 
@@ -15,6 +15,17 @@ model:
   hidden_dim: 256
   dropout: 0.2
   pooling_eps: 1.0e-5
+
+loss:
+  tag:
+    name: asymmetric_loss
+    gamma_pos: 0.0
+    gamma_neg: 4.0
+    clip: 0.05
+    eps: 1.0e-8
+  va:
+    name: smooth_l1
+    beta: 0.1
 
 optimizer:
   name: adamw
