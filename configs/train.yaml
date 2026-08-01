@@ -3,11 +3,10 @@ device: cuda
 
 data:
   batch_size: 8
-  num_workers: 0
+  num_workers: 4
   pin_memory: true
 
 feature:
-  # Python 0-based 索引
   layer_indices: [5, 6]
   pooling: mean_std
 
@@ -32,6 +31,14 @@ optimizer:
   learning_rate: 0.0001
   weight_decay: 0.0001
 
+scheduler:
+  name: warmup_cosine
+  warmup_ratio: 0.05
+  min_learning_rate: 0.000001
+
 training:
   max_epochs: 50
   early_stopping_patience: 10
+  early_stopping_min_delta: 0.001
+  amp: true
+  gradient_clip_norm: 1.0
