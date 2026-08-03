@@ -37,8 +37,12 @@ scheduler:
   min_learning_rate: 0.000001
 
 training:
-  max_epochs: 50
-  early_stopping_patience: 10
-  early_stopping_min_delta: 0.001
+  max_epochs: 30
+  early_stopping_patience: 8
+  early_stopping_min_delta: 0.0005
   amp: true
   gradient_clip_norm: 1.0
+  max_consecutive_amp_skips: 8
+
+multitask:
+  mtg_per_va: 2

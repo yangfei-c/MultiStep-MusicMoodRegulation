@@ -1,1 +1,1 @@
-"""Shared training infrastructure for MTG and VA experiments."""
+"""Shared training, checkpointing and experiment factories."""

@@ -10,7 +10,7 @@ if str(ROOT) not in sys.path: sys.path.insert(0, str(ROOT))
 
 from src.data import MTGDataset, VADataset, build_dataloader
 from src.losses import GroupBalancedASL, VALoss
-from src.model import EnhancedBaselineModel
+from src.models import EnhancedBaselineModel
 
 
 DATASET_CONFIG = ROOT / "configs" / "dataset.yaml"
@@ -91,10 +91,11 @@ def main() -> None:
     device = resolve_device(str(train_config.get("device", "cpu")))
 
     model = EnhancedBaselineModel(
-        train_config["feature"]["layer_indices"],
-        int(model_config["hidden_dim"]),
-        float(model_config["dropout"]),
-        float(model_config.get("pooling_eps", 1.0e-5)),
+        layer_indices=train_config["feature"]["layer_indices"],
+        hidden_dim=int(model_config["hidden_dim"]),
+        dropout=float(model_config["dropout"]),
+        pooling=str(train_config["feature"].get("pooling", "mean_std")),
+        pooling_eps=float(model_config.get("pooling_eps", 1.0e-5)),
     ).to(device).train()
 
     tag_loss = GroupBalancedASL(
