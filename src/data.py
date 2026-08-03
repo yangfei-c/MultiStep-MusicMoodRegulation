@@ -1,13 +1,12 @@
 import csv
 from pathlib import Path
-
 import numpy as np
 import torch
 from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import DataLoader, Dataset
 
 
-MTG_FILES = {
+mtg_files = {
     "train": "autotagging-train.tsv",
     "validation": "autotagging-validation.tsv",
     "test": "autotagging-test.tsv",
@@ -45,7 +44,7 @@ class MTGDataset(Dataset):
 
     def __init__(self, config: dict, split: str) -> None:
         feature_root = Path(config["feature_dir"])
-        split_file = Path(config["split_dir"]) / MTG_FILES[split]
+        split_file = Path(config["split_dir"]) / mtg_files[split]
         tags = np.load(config["tag_vocabulary_file"], allow_pickle=False).reshape(-1).astype(str)
         tag_to_index = {tag: index for index, tag in enumerate(tags)}
         self.samples = []
