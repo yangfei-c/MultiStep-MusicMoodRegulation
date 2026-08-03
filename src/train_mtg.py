@@ -26,6 +26,8 @@ def main() -> None:
     seed = int(train_config.get("seed", 42))
     set_seed(seed)
     device = get_device(str(train_config.get("device", "cpu")))
+
+    #数据加载
     data = train_config["data"]
     datasets = {split: MTGDataset(dataset_config["mtg"], split) for split in ("train", "validation", "test")}
     loaders = {
@@ -38,9 +40,17 @@ def main() -> None:
         )
         for split, dataset in datasets.items()
     }
+
+    #模型
     model = build_model(train_config, device)
+
+    #损失
     criterion = build_tag_loss(train_config)
+
+    #优化器
     optimizer = build_optimizer(model, train_config)
+
+    #日志
     output_dir, resume_path, checkpoint = prepare_run(ROOT / "outputs/tag/mtg", RUN, seed)
     with logged_output(output_dir / "train.log"):
         print(time.strftime("[RUN] %Y-%m-%d %H:%M:%S"))

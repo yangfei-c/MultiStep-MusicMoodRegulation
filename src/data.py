@@ -40,7 +40,7 @@ def load_song_features(feature_dir: Path) -> torch.Tensor:
 
 
 class MTGDataset(Dataset):
-    """由官方 TSV 驱动的 MTG-Jamendo 183 标签数据集。"""
+    """ MTG-Jamendo 183 标签数据集。"""
 
     def __init__(self, config: dict, split: str) -> None:
         if split not in MTG_FILES:
@@ -51,6 +51,8 @@ class MTGDataset(Dataset):
         if len(tags) != 183 or len(set(tags)) != 183:
             raise ValueError("MTG tag vocabulary 必须包含 183 个唯一标签")
         tag_to_index = {tag: index for index, tag in enumerate(tags)}
+
+        #mert特征
         self.samples = []
         with split_file.open("r", encoding="utf-8", newline="") as file:
             reader = csv.reader(file, delimiter="\t")
@@ -106,6 +108,7 @@ def collate_music_batch(samples: list[dict]) -> dict:
     lengths = torch.tensor([feature.shape[0] for feature in feature_list], dtype=torch.long)
     features = pad_sequence(feature_list, batch_first=True, padding_value=0.0)
     segment_mask = torch.arange(features.shape[1])[None, :] < lengths[:, None]
+
     return {
         "ids": [sample["id"] for sample in samples],
         "features": features,

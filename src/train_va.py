@@ -1,4 +1,4 @@
-"""VA 回归入口；EXPERIMENT 支持单域、联合域与跨域设置。"""
+"""VA 回归入口"""
 
 import sys
 import time
