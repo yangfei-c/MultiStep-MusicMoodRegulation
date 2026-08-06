@@ -1,0 +1,7 @@
+numpy
+PyYAML
+scikit-learn
+torch
+transformers==4.57.6
+sentencepiece>=0.2.0
+cffi>=1.17

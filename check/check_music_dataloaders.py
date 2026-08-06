@@ -1,3 +1,5 @@
+"""音乐 Dataset 与 DataLoader 检查。"""
+
 import sys
 from pathlib import Path
 
@@ -13,8 +15,20 @@ from src.data import MTGDataset, VADataset, build_dataloader
 
 
 DATASET_CONFIG = ROOT / "configs" / "dataset.yaml"
-TRAIN_CONFIG = ROOT / "configs" / "train.yaml"
-EXPECTED_LENGTHS = {"mtg": 32859, "deam": 1261, "pmemo": 536}
+TRAIN_CONFIG = ROOT / "configs" / "music_train.yaml"
+EXPECTED_LENGTHS = {
+    "mtg_full183": 32859,
+    "mtg_genre87": 32572,
+    "mtg_instrument40": 14395,
+    "mtg_mood56": 9949,
+    "deam": 1261,
+    "pmemo": 536,
+}
+SUBSET_SLICES = {
+    "mtg_genre87": slice(0, 87),
+    "mtg_instrument40": slice(87, 127),
+    "mtg_mood56": slice(127, 183),
+}
 
 
 def load_yaml(path: Path) -> dict:
@@ -56,9 +70,13 @@ def check_batch(name: str, dataset, dataloader, target_dim: int) -> None:
     if (~mask).any().item():
         require(torch.count_nonzero(features[~mask]).item() == 0, "padding 位置存在非零特征")
 
-    if name == "mtg":
+    if name.startswith("mtg"):
         require(((targets == 0) | (targets == 1)).all().item(), "MTG target 不是二值标签")
         require((targets.sum(dim=1) >= 1).all().item(), "MTG 中存在没有正标签的样本")
+        if name in SUBSET_SLICES:
+            label_slice = SUBSET_SLICES[name]
+            outside = torch.cat((targets[:, :label_slice.start], targets[:, label_slice.stop:]), dim=1)
+            require(torch.count_nonzero(outside).item() == 0, f"{name} manifest 包含组外正标签")
     else:
         require(targets.min().item() >= -1.0 - 1e-6 and targets.max().item() <= 1.0 + 1e-6, f"VA 超出 [-1,1]：{targets.min().item()}～{targets.max().item()}")
 
@@ -78,7 +96,10 @@ def main() -> None:
     data_config = train_config["data"]
 
     datasets = {
-        "mtg": MTGDataset(dataset_config["mtg"], "train"),
+        "mtg_full183": MTGDataset(dataset_config["mtg"], "train"),
+        "mtg_genre87": MTGDataset(dataset_config["mtg"], "train", tag_set="genre"),
+        "mtg_instrument40": MTGDataset(dataset_config["mtg"], "train", tag_set="instrument"),
+        "mtg_mood56": MTGDataset(dataset_config["mtg"], "train", tag_set="moodtheme"),
         "deam": VADataset(dataset_config["deam"], "deam", "train"),
         "pmemo": VADataset(dataset_config["pmemo"], "pmemo", "train"),
     }
@@ -102,12 +123,11 @@ def main() -> None:
     print(f"pin_memory：{data_config['pin_memory']}")
     print("检查模式：只读取每个数据集的一个 batch，不训练模型")
 
-    check_batch("mtg", datasets["mtg"], loaders["mtg"], 183)
-    check_batch("deam", datasets["deam"], loaders["deam"], 2)
-    check_batch("pmemo", datasets["pmemo"], loaders["pmemo"], 2)
+    for name, dataset in datasets.items():
+        check_batch(name, dataset, loaders[name], 183 if name.startswith("mtg") else 2)
 
     print("\n================ 最终结果 ================")
-    print("[PASS] 三个 Dataset 和 DataLoader 检查全部通过")
+    print("[PASS] MTG 四种 manifest 与两个 VA Dataset/DataLoader 检查全部通过")
 
 
 if __name__ == "__main__":

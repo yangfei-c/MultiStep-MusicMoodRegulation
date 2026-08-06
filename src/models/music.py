@@ -92,9 +92,7 @@ class EnhancedBaselineModel(nn.Module):
 
     def forward(self, features: torch.Tensor, mask: torch.Tensor) -> dict[str, torch.Tensor]:
         embedding = self.encode(features, mask)
-        genre = self.genre_head(embedding)
-        instrument = self.instrument_head(embedding)
-        mood = self.mood_head(embedding)
+        genre, instrument, mood = self.genre_head(embedding), self.instrument_head(embedding), self.mood_head(embedding)
         return {
             "song_embedding": embedding,
             "genre_logits": genre,

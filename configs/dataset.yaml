@@ -17,3 +17,16 @@ pmemo:
   split_dir: 'D:/AAAA_audio_dataset/pmemo/meta/split'
   feature_dir: 'D:/AAAA_audio_dataset/pmemo/mert_30s'
   static_annotation_file: 'D:/AAAA_audio_dataset/pmemo/meta/static_annotations.csv'
+
+
+text_va:
+  json_files:
+    zh: 'D:/AAAA_text_va/chinese_va.json'
+    en: 'D:/AAAA_text_va/english_va.json'
+  invalid_text_policy: skip
+  split:
+    name: local_source_stratified_group
+    seed: 42
+    train: 0.8
+    validation: 0.1
+    test: 0.1

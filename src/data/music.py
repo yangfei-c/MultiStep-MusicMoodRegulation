@@ -8,9 +8,10 @@ from torch.utils.data import DataLoader, Dataset, WeightedRandomSampler
 
 
 MTG_FILES = {
-    "train": "autotagging-train.tsv",
-    "validation": "autotagging-validation.tsv",
-    "test": "autotagging-test.tsv",
+    "all": {split: f"autotagging-{split}.tsv" for split in ("train", "validation", "test")},
+    "genre": {split: f"autotagging_genre-{split}.tsv" for split in ("train", "validation", "test")},
+    "instrument": {split: f"autotagging_instrument-{split}.tsv" for split in ("train", "validation", "test")},
+    "moodtheme": {split: f"autotagging_moodtheme-{split}.tsv" for split in ("train", "validation", "test")},
 }
 
 
@@ -40,20 +41,19 @@ def load_song_features(feature_dir: Path) -> torch.Tensor:
 
 
 class MTGDataset(Dataset):
-    """ MTG-Jamendo 183 标签数据集。"""
+    """MTG-Jamendo official split-0；读取 full183 或单一标签组 manifest。"""
 
-    def __init__(self, config: dict, split: str) -> None:
-        if split not in MTG_FILES:
-            raise ValueError(f"未知 MTG split：{split}")
+    def __init__(self, config: dict, split: str, tag_set: str = "all") -> None:
+        if tag_set not in MTG_FILES or split not in MTG_FILES[tag_set]:
+            raise ValueError(f"未知 MTG tag_set/split：{tag_set}/{split}")
         feature_root = Path(config["feature_dir"])
-        split_file = Path(config["split_dir"]) / MTG_FILES[split]
+        split_file = Path(config["split_dir"]) / MTG_FILES[tag_set][split]
         tags = np.load(config["tag_vocabulary_file"], allow_pickle=False).reshape(-1).astype(str)
         if len(tags) != 183 or len(set(tags)) != 183:
             raise ValueError("MTG tag vocabulary 必须包含 183 个唯一标签")
         tag_to_index = {tag: index for index, tag in enumerate(tags)}
 
-        #mert特征
-        self.samples = []
+        self.tag_set, self.samples = tag_set, []
         with split_file.open("r", encoding="utf-8", newline="") as file:
             reader = csv.reader(file, delimiter="\t")
             next(reader)
@@ -108,7 +108,6 @@ def collate_music_batch(samples: list[dict]) -> dict:
     lengths = torch.tensor([feature.shape[0] for feature in feature_list], dtype=torch.long)
     features = pad_sequence(feature_list, batch_first=True, padding_value=0.0)
     segment_mask = torch.arange(features.shape[1])[None, :] < lengths[:, None]
-
     return {
         "ids": [sample["id"] for sample in samples],
         "features": features,
@@ -150,9 +149,7 @@ def domain_balanced_sampler(lengths: list[int] | tuple[int, ...], seed: int) -> 
     if not lengths or any(length <= 0 for length in lengths):
         raise ValueError(f"域样本数必须均为正数：{lengths}")
     domains = len(lengths)
-    weights = torch.tensor(
-        [1.0 / (domains * length) for length in lengths for _ in range(length)], dtype=torch.double
-    )
+    weights = torch.tensor([1.0 / (domains * length) for length in lengths for _ in range(length)], dtype=torch.double)
     return WeightedRandomSampler(
         weights,
         num_samples=domains * max(lengths),

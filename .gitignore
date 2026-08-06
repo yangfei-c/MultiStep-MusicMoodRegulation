@@ -23,6 +23,8 @@ credentials.json
 # Data (ignore everything, optionally keep a small sample)
 data/
 !data/sample/
+!src/data/
+!src/data/*.py
 # If you want to keep certain small files, use:
 # !data/sample/*.csv
 

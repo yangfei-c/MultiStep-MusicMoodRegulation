@@ -1,3 +1,4 @@
-from src.models.baseline import EnhancedBaselineModel, MaskedMeanPooling, MaskedMeanStdPooling
+from src.models.music import EnhancedBaselineModel, MaskedMeanPooling, MaskedMeanStdPooling
+from src.models.text import XLMRobertaVAModel
 
-__all__ = ["EnhancedBaselineModel", "MaskedMeanPooling", "MaskedMeanStdPooling"]
+__all__ = ["EnhancedBaselineModel", "MaskedMeanPooling", "MaskedMeanStdPooling", "XLMRobertaVAModel"]

@@ -3,6 +3,8 @@ device: cuda
 
 data:
   batch_size: 8
+  tag_subset_batch_size: 64
+  va_batch_size: 32
   num_workers: 4
   pin_memory: true
 
@@ -22,9 +24,13 @@ loss:
     gamma_neg: 4.0
     clip: 0.05
     eps: 1.0e-8
+  tag_subset:
+    name: positive_weighted_bce
+    max_pos_weight: 20.0
   va:
-    name: smooth_l1
+    name: smooth_l1_ccc
     beta: 0.1
+    ccc_weight: 0.1
 
 optimizer:
   name: adamw
@@ -43,6 +49,3 @@ training:
   amp: true
   gradient_clip_norm: 1.0
   max_consecutive_amp_skips: 8
-
-multitask:
-  mtg_per_va: 2

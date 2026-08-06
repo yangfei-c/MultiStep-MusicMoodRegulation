@@ -71,12 +71,21 @@ def concordance_correlation_coefficient(targets: np.ndarray, predictions: np.nda
 def compute_va_metrics(predictions, targets) -> dict[str, float]:
     predictions, targets = check_arrays(predictions, targets, 2, "VA")
     ccc = [concordance_correlation_coefficient(targets[:, axis], predictions[:, axis]) for axis in range(2)]
+    pearson = [_pearson(targets[:, axis], predictions[:, axis]) for axis in range(2)]
     rmse = np.sqrt(mean_squared_error(targets, predictions, multioutput="raw_values"))
     mae = mean_absolute_error(targets, predictions, multioutput="raw_values")
     r2 = r2_score(targets, predictions, multioutput="raw_values", force_finite=True)
     return {
         "valence_ccc": ccc[0], "arousal_ccc": ccc[1], "va_score": float(np.mean(ccc)),
+        "valence_pearson": pearson[0], "arousal_pearson": pearson[1], "mean_pearson": float(np.mean(pearson)),
         "valence_r2": float(r2[0]), "arousal_r2": float(r2[1]), "mean_r2": float(np.mean(r2)),
         "valence_rmse": float(rmse[0]), "arousal_rmse": float(rmse[1]), "mean_rmse": float(rmse.mean()),
         "valence_mae": float(mae[0]), "arousal_mae": float(mae[1]), "mean_mae": float(mae.mean()),
     }
+
+
+def _pearson(targets: np.ndarray, predictions: np.ndarray, eps: float = 1.0e-12) -> float:
+    target_std, prediction_std = targets.std(), predictions.std()
+    if target_std <= eps or prediction_std <= eps:
+        return 1.0 if np.allclose(targets, predictions, atol=eps, rtol=0.0) else 0.0
+    return float(np.clip(np.corrcoef(targets, predictions)[0, 1], -1.0, 1.0))

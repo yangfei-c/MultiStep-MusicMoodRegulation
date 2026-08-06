@@ -119,10 +119,10 @@ def gpu_memory(device: torch.device) -> str:
     return f"{torch.cuda.max_memory_allocated(device) / 1024**3:.2f}GB" if device.type == "cuda" else "CPU"
 
 
-def nonfinite_batch_message(batch: dict, features: torch.Tensor, targets: torch.Tensor) -> str:
+def nonfinite_batch_message(batch: dict, predictions: torch.Tensor, targets: torch.Tensor) -> str:
     problems = []
-    if not torch.isfinite(features).all().item():
-        problems.append("features 含 NaN/Inf")
+    if not torch.isfinite(predictions).all().item():
+        problems.append("predictions 含 NaN/Inf")
     if not torch.isfinite(targets).all().item():
         problems.append("targets 含 NaN/Inf")
     return f"歌曲 IDs={batch.get('ids', [])}; " + ("；".join(problems) if problems else "输入本身为有限值")

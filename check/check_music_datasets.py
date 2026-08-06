@@ -14,6 +14,11 @@ MTG_SPLITS = {
     "validation": ("autotagging-validation.tsv", 11101),
     "test": ("autotagging-test.tsv", 11565),
 }
+MTG_SUBSET_SPLITS = {
+    "genre": ({"train": 32572, "validation": 11043, "test": 11479}, "genre---"),
+    "instrument": ({"train": 14395, "validation": 5466, "test": 5115}, "instrument---"),
+    "moodtheme": ({"train": 9949, "validation": 3802, "test": 4231}, "mood/theme---"),
+}
 
 VA_INFO = {
     "deam": {
@@ -192,6 +197,21 @@ def check_mtg(config: dict) -> None:
         f"total={len(tags)}"
     )
     print("[PASS] tag_list.npy 与正式 TSV 一致")
+
+    for group, (expected_splits, prefix) in MTG_SUBSET_SPLITS.items():
+        actual = []
+        for split, expected in expected_splits.items():
+            path = split_dir / f"autotagging_{group}-{split}.tsv"
+            require(path.is_file(), f"缺少 {path}")
+            with path.open("r", encoding="utf-8", newline="") as file:
+                reader = csv.reader(file, delimiter="\t")
+                next(reader, None)
+                subset_rows = list(reader)
+            require(len(subset_rows) == expected, f"MTG {group}/{split} 数量为 {len(subset_rows)}，预期为 {expected}")
+            require(all(tag.startswith(prefix) for row in subset_rows for tag in row[5:]), f"MTG {group}/{split} 含组外标签")
+            require({row[0] for row in subset_rows} <= track_ids, f"MTG {group}/{split} 含 full183 manifest 之外的歌曲")
+            actual.append(len(subset_rows))
+        print(f"[PASS] {group} 子任务划分：{'/'.join(map(str, actual))}")
 
     # MTG 本地完整预处理集合为 55,609，
     # 正式训练仍只使用上面的 55,525 首。

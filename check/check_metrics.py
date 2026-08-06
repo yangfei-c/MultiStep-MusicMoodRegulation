@@ -80,7 +80,8 @@ def check_va() -> None:
     ], dtype=np.float64)
 
     perfect = compute_va_metrics(targets.copy(), targets)
-    for key in ("valence_ccc", "arousal_ccc", "va_score"): require_close(perfect[key], 1.0, f"{key} 错误")
+    for key in ("valence_ccc", "arousal_ccc", "va_score", "valence_pearson", "arousal_pearson", "mean_pearson"):
+        require_close(perfect[key], 1.0, f"{key} 错误")
     for key in ("valence_rmse", "arousal_rmse", "mean_rmse", "valence_mae", "arousal_mae", "mean_mae"):
         require_close(perfect[key], 0.0, f"{key} 错误")
 

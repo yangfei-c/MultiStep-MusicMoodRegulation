@@ -1,3 +1,5 @@
+"""音乐模型输出、维度与 padding mask 检查。"""
+
 import sys
 from pathlib import Path
 
@@ -13,7 +15,7 @@ from src.models import EnhancedBaselineModel
 
 
 DATASET_CONFIG = ROOT / "configs" / "dataset.yaml"
-TRAIN_CONFIG = ROOT / "configs" / "train.yaml"
+TRAIN_CONFIG = ROOT / "configs" / "music_train.yaml"
 
 
 def load_yaml(path: Path) -> dict:

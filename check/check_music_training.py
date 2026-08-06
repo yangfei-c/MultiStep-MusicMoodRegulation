@@ -1,3 +1,5 @@
+"""音乐损失、梯度路由与 optimizer step 检查。"""
+
 import sys
 from pathlib import Path
 
@@ -9,12 +11,12 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path: sys.path.insert(0, str(ROOT))
 
 from src.data import MTGDataset, VADataset, build_dataloader
-from src.losses import GroupBalancedASL, VALoss
+from src.losses import GroupBalancedASL, TagSubsetWeightedBCE, VALoss
 from src.models import EnhancedBaselineModel
 
 
 DATASET_CONFIG = ROOT / "configs" / "dataset.yaml"
-TRAIN_CONFIG = ROOT / "configs" / "train.yaml"
+TRAIN_CONFIG = ROOT / "configs" / "music_train.yaml"
 
 
 def load_yaml(path: Path) -> dict:
@@ -84,6 +86,28 @@ def check_batch(name: str, loader, model: EnhancedBaselineModel, tag_loss: Group
     print(f"[PASS] {name.upper()} | input={tuple(features.shape)} | total={loss.item():.6f} | {detail}")
 
 
+def check_subset_route(group: str, loader, model: EnhancedBaselineModel, device: torch.device) -> None:
+    groups = {
+        "genre": (slice(0, 87), "genre_head"),
+        "instrument": (slice(87, 127), "instrument_head"),
+        "mood": (slice(127, 183), "mood_head"),
+    }
+    label_slice, selected_head = groups[group]
+    batch = next(iter(loader))
+    features, mask, targets = batch["features"].to(device), batch["segment_mask"].to(device), batch["targets"].to(device)
+    model.zero_grad(set_to_none=True)
+    weights = torch.ones(label_slice.stop - label_slice.start, device=device)
+    loss = TagSubsetWeightedBCE(label_slice, weights)(model(features, mask)["tag_logits"], targets)
+    loss.backward()
+    for head in ("genre_head", "instrument_head", "mood_head"):
+        gradients = [parameter.grad for parameter in getattr(model, head).parameters()]
+        if head == selected_head:
+            require(all(gradient is not None and torch.count_nonzero(gradient).item() > 0 for gradient in gradients), f"{group}-only 未更新 {head}")
+        else:
+            require(all(gradient is None or torch.count_nonzero(gradient).item() == 0 for gradient in gradients), f"{group}-only 不应更新 {head}")
+    print(f"[PASS] {group}-only 梯度路由 | loss={loss.item():.6f} | selected={selected_head}")
+
+
 def main() -> None:
     dataset_config, train_config = load_yaml(DATASET_CONFIG), load_yaml(TRAIN_CONFIG)
     data_config, model_config = train_config["data"], train_config["model"]
@@ -104,13 +128,16 @@ def main() -> None:
         float(tag_config["clip"]),
         float(tag_config["eps"]),
     )
-    va_loss = VALoss(float(va_config["beta"]))
+    va_loss = VALoss(float(va_config["beta"]), float(va_config.get("ccc_weight", 0.0)))
 
     optimizer_config = train_config["optimizer"]
     optimizer = torch.optim.AdamW(model.parameters(), lr=float(optimizer_config["learning_rate"]), weight_decay=float(optimizer_config["weight_decay"]))
 
     datasets = {
         "mtg": MTGDataset(dataset_config["mtg"], "train"),
+        "genre": MTGDataset(dataset_config["mtg"], "train", tag_set="genre"),
+        "instrument": MTGDataset(dataset_config["mtg"], "train", tag_set="instrument"),
+        "mood": MTGDataset(dataset_config["mtg"], "train", tag_set="moodtheme"),
         "deam": VADataset(dataset_config["deam"], "deam", "train"),
         "pmemo": VADataset(dataset_config["pmemo"], "pmemo", "train"),
     }
@@ -119,8 +146,9 @@ def main() -> None:
         for name, dataset in datasets.items()
     }
 
-    print(f"device={device} | ASL=({tag_loss.gamma_pos},{tag_loss.gamma_neg},{tag_loss.clip}) | SmoothL1={va_loss.beta}")
+    print(f"device={device} | ASL=({tag_loss.gamma_pos},{tag_loss.gamma_neg},{tag_loss.clip}) | SmoothL1={va_loss.beta} | CCC weight={va_loss.ccc_weight}")
     for name in ("mtg", "deam", "pmemo"): check_batch(name, loaders[name], model, tag_loss, va_loss, optimizer, device)
+    for group in ("genre", "instrument", "mood"): check_subset_route(group, loaders[group], model, device)
     print("[PASS] loss、梯度路由和参数更新检查全部通过")
 
 
